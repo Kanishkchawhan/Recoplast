@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
-const authenticateToken = require("../middleware/authMiddleware"); // <-- Import JWT middleware
-const { uploadPlastic, getUserUploads, getAllUploads, updatePickupDetails, approveOrRejectUpload } = require("../controllers/uploadController");
+const { authenticateToken, authorizeRoles } = require("../middleware/authMiddleware");
+const { uploadPlastic, getUserUploads, getAllUploads, updatePickupDetails, approveOrRejectUpload, getUserStats, getAdminStats } = require("../controllers/uploadController");
 
 // Set up multer storage
 const storage = multer.diskStorage({
@@ -14,13 +14,15 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Protected routes
-router.post("/", upload.single("image"), uploadPlastic);
-router.get("/:username", getUserUploads);
-router.put("/pickup/:id", updatePickupDetails);
+// User Routes (Protected)
+router.post("/", authenticateToken, upload.single("image"), uploadPlastic);
+router.get("/my-uploads", authenticateToken, getUserUploads);
+router.get("/stats", authenticateToken, getUserStats);
 
-// Public/admin routes (adjust as needed)
-router.get("/admin/all-uploads", getAllUploads); // Admin view
-router.put("/admin/approve-reject/:id", approveOrRejectUpload); // Admin approve/reject route
+// Admin Routes (Protected + Role Check)
+router.get("/admin/all-uploads", authenticateToken, authorizeRoles("admin"), getAllUploads);
+router.get("/admin/stats", authenticateToken, authorizeRoles("admin"), getAdminStats);
+router.put("/admin/approve-reject/:id", authenticateToken, authorizeRoles("admin"), approveOrRejectUpload);
+router.put("/pickup/:id", authenticateToken, authorizeRoles("admin"), updatePickupDetails);
 
 module.exports = router;

@@ -1,24 +1,38 @@
 const mongoose = require("mongoose");
 
 const plasticUploadSchema = new mongoose.Schema({
-  username: String,
-  weightInKg: Number,
-  location: String,
-  imagePath: String,
-  uploadedAt: {
-    type: Date,
-    default: Date.now,
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
   },
-  pickupStatus: {
+  weightInKg: {
+    type: Number,
+    required: true,
+  },
+  location: {
     type: String,
+    required: true,
+  },
+  imagePath: {
+    type: String,
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: ["Pending", "Approved", "Rejected", "pickedUp"],
     default: "Pending",
+  },
+  adminComment: {
+    type: String,
+    default: "",
   },
   pickupDate: String,
   pickupTime: String,
-  rewardCoupon: {
-    type: String,
-    default: null,
+  couponsAwarded: {
+    type: Number,
+    default: 0,
   },
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("PlasticUpload", plasticUploadSchema);

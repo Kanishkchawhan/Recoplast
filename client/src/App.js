@@ -1,41 +1,61 @@
 // src/App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import Navbar from "./components/Navbar.jsx";
 import HomePage from "./pages/HomePage";
 import UploadPage from "./pages/UploadPage";
 import ShopPage from "./pages/ShopPage";
-import UploadsList from "./components/UploadsList";
-import AdminDashboard from "./components/AdminDashboard";
 import MyUploads from "./pages/MyUploads";
+import CartPage from "./pages/CartPage";
 import PickupStatusPage from "./pages/PickupStatusPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import AdminLayout from "./layouts/AdminLayout";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminUploadsPage from "./pages/AdminUploadsPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
+import AdminProductsPage from "./pages/AdminProductsPage";
+import PageTransition from "./components/common/PageTransition";
 
 // Helper for protected routes
-function RequireAuth({ children }) {
+function RequireAuth({ children, role }) {
   const user = JSON.parse(localStorage.getItem("user"));
   const location = useLocation();
+
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
+
+  if (role && user.role !== role) {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 }
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   return (
-    <Router>
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100">
-        <Navbar />
-        <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-fadeIn">
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+    <div className={`min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 ${isAdminRoute ? 'flex' : ''}`}>
+      {!isAdminRoute && <Navbar />}
+
+      <main className={`flex-1 ${!isAdminRoute ? 'max-w-7xl mx-auto p-4 sm:p-6 lg:p-8' : ''}`}>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            {/* Public Routes */}
+            <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+            <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+
+            {/* User Routes */}
             <Route
               path="/"
               element={
                 <RequireAuth>
-                  <HomePage />
+                  <PageTransition><HomePage /></PageTransition>
                 </RequireAuth>
               }
             />
@@ -43,7 +63,7 @@ function App() {
               path="/upload"
               element={
                 <RequireAuth>
-                  <UploadPage />
+                  <PageTransition><UploadPage /></PageTransition>
                 </RequireAuth>
               }
             />
@@ -51,23 +71,7 @@ function App() {
               path="/shop"
               element={
                 <RequireAuth>
-                  <ShopPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/gallery"
-              element={
-                <RequireAuth>
-                  <UploadsList />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <RequireAuth>
-                  <AdminDashboard />
+                  <PageTransition><ShopPage /></PageTransition>
                 </RequireAuth>
               }
             />
@@ -75,7 +79,15 @@ function App() {
               path="/my-uploads"
               element={
                 <RequireAuth>
-                  <MyUploads />
+                  <PageTransition><MyUploads /></PageTransition>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/cart"
+              element={
+                <RequireAuth>
+                  <PageTransition><CartPage /></PageTransition>
                 </RequireAuth>
               }
             />
@@ -83,13 +95,37 @@ function App() {
               path="/pickup-status"
               element={
                 <RequireAuth>
-                  <PickupStatusPage />
+                  <PageTransition><PickupStatusPage /></PageTransition>
                 </RequireAuth>
               }
             />
+
+            {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <RequireAuth role="admin">
+                  <AdminLayout />
+                </RequireAuth>
+              }
+            >
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="uploads" element={<AdminUploadsPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="products" element={<AdminProductsPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
+            </Route>
           </Routes>
-        </main>
-      </div>
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

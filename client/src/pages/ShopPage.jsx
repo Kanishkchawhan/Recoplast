@@ -1,70 +1,112 @@
 import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "../utils/axiosInstance";
-import Cart from "../components/Cart";
+import { ShoppingCart, Plus, Tag, Coins } from "lucide-react";
+import GlassCard from "../components/common/GlassCard";
+import AnimatedButton from "../components/common/AnimatedButton";
+
+const ProductCard = ({ product, onAdd }) => (
+  <GlassCard hoverEffect className="flex flex-col h-full overflow-hidden p-0">
+    <div className="h-48 overflow-hidden relative group">
+      <img
+        src={product.image.startsWith("http") ? product.image : `http://localhost:5000/${product.image}`}
+        alt={product.name}
+        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+      />
+      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold text-emerald-600 shadow-sm flex items-center gap-1">
+        <Tag size={12} /> {product.couponCost} Coupons
+      </div>
+    </div>
+
+    <div className="p-5 flex flex-col flex-1">
+      <h3 className="text-lg font-bold text-slate-800 mb-1">{product.name}</h3>
+      <p className="text-slate-500 text-sm mb-4 line-clamp-2">{product.description}</p>
+
+      <div className="mt-auto">
+        <AnimatedButton
+          variant="secondary"
+          onClick={() => onAdd(product)}
+          className="w-full flex items-center justify-center gap-2 py-2 text-sm"
+        >
+          <Plus size={16} /> Add to Cart
+        </AnimatedButton>
+      </div>
+    </div>
+  </GlassCard>
+);
 
 const ShopPage = () => {
   const [products, setProducts] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [checkoutMsg, setCheckoutMsg] = useState("");
+  const [couponsBalance, setCouponsBalance] = useState(0);
+  const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
     axios.get("/products")
       .then((res) => setProducts(res.data))
       .catch((err) => console.error("Failed to load products:", err));
+
+    // Fetch user's coupon balance
+    axios.get("/upload/stats")
+      .then((res) => setCouponsBalance(res.data.couponsBalance || 0))
+      .catch((err) => console.error("Failed to load stats:", err));
   }, []);
 
   const handleAddToCart = (product) => {
     if (!user) {
-      setCheckoutMsg("Please login to add items to cart.");
+      alert("Please login first!");
       return;
     }
-    setCart((prev) => [...prev, product]);
-    setCheckoutMsg("");
-  };
+    // Get existing cart from localStorage
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const existingIndex = cart.findIndex(item => item._id === product._id);
 
-  const handleRemove = (id) => {
-    setCart((prev) => prev.filter((item) => item._id !== id));
-  };
-
-  const handleCheckout = () => {
-    if (!user) {
-      setCheckoutMsg("Please login to checkout.");
-      return;
+    if (existingIndex >= 0) {
+      cart[existingIndex].quantity += 1;
+    } else {
+      cart.push({ ...product, quantity: 1 });
     }
-    // For demo: just clear cart and show message
-    setCart([]);
-    setCheckoutMsg("Checkout successful! Your order will be processed.");
+
+    localStorage.setItem("cart", JSON.stringify(cart));
+    alert(`${product.name} added to cart!`);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10 relative">
-      <h1 className="text-3xl font-bold text-center mb-10">♻️ Shop Recycled Products</h1>
-      {checkoutMsg && <div className="text-center text-green-700 font-semibold mb-4">{checkoutMsg}</div>}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-        {products.map((product) => (
-          <div
-            key={product._id}
-            className="bg-white rounded-2xl shadow-lg p-5 hover:shadow-2xl transition duration-300"
-          >
-            <img
-              src={product.image.startsWith("http") ? product.image : `http://localhost:5000/${product.image}`}
-              alt={product.name}
-              className="w-full h-48 object-cover rounded-xl mb-4"
-            />
-            <h2 className="text-xl font-semibold text-gray-800">{product.name}</h2>
-            <p className="text-gray-600 text-sm mt-1">{product.description}</p>
-            <div className="text-green-600 font-bold mt-3 mb-4">Coupon Cost: {product.couponCost}</div>
-            <button
-              onClick={() => handleAddToCart(product)}
-              className="w-full bg-green-600 text-white py-2 px-4 rounded-xl hover:bg-green-700 transition duration-300"
-            >
-              Add to Cart
-            </button>
-          </div>
-        ))}
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">Eco Shop</h1>
+          <p className="text-slate-500">Redeem your hard-earned coupons for sustainable goods.</p>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {/* Coupon Balance */}
+          <GlassCard className="flex items-center gap-2 px-4 py-2 !rounded-full">
+            <Coins size={20} className="text-yellow-500" />
+            <span className="font-bold text-slate-700">{couponsBalance}</span>
+            <span className="text-slate-500 text-sm hidden sm:block">Coupons</span>
+          </GlassCard>
+
+          {/* Cart Link */}
+          <Link to="/cart">
+            <GlassCard className="flex items-center gap-2 px-4 py-2 !rounded-full cursor-pointer hover:bg-emerald-50 transition">
+              <ShoppingCart size={20} className="text-emerald-600" />
+              <span className="font-semibold text-slate-700 hidden sm:block">My Cart</span>
+            </GlassCard>
+          </Link>
+        </div>
       </div>
-      <Cart cart={cart} onCheckout={handleCheckout} onRemove={handleRemove} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {products.map((product) => (
+          <ProductCard key={product._id} product={product} onAdd={handleAddToCart} />
+        ))}
+        {products.length === 0 && (
+          <div className="col-span-full text-center py-12 text-slate-400">
+            No products available at the moment. Check back soon!
+          </div>
+        )}
+      </div>
     </div>
   );
 };
